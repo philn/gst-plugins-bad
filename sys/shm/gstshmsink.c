@@ -943,6 +943,11 @@ pollthread_func (gpointer data)
           gclient->pollfd.fd);
       g_slice_free (struct GstShmClient, gclient);
 
+      if (g_list_length (self->clients) == 0) {
+        GST_DEBUG_OBJECT (self, "All clients gone. Stopping");
+        self->stop = TRUE;
+      }
+
       goto again;
     }
 
