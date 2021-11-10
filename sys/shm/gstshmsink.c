@@ -836,6 +836,9 @@ pollthread_func (gpointer data)
       rv = gst_poll_wait (self->poll, timeout);
     } while (rv < 0 && errno == EINTR);
 
+    if (self->stop)
+      return NULL;
+
     if (rv < 0) {
       GST_ELEMENT_ERROR (self, RESOURCE, READ,
           ("Failed waiting on fd activity"),
@@ -844,9 +847,6 @@ pollthread_func (gpointer data)
     }
 
     timeout = GST_CLOCK_TIME_NONE;
-
-    if (self->stop)
-      return NULL;
 
     if (gst_poll_fd_has_closed (self->poll, &self->serverpollfd)) {
       GST_ELEMENT_ERROR (self, RESOURCE, READ, ("Failed read from shmsink"),
