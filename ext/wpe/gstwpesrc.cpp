@@ -127,7 +127,7 @@ G_DEFINE_TYPE_WITH_CODE (GstWpeSrc, gst_wpe_src, GST_TYPE_GL_BASE_SRC,
     G_IMPLEMENT_INTERFACE (GST_TYPE_URI_HANDLER, gst_wpe_src_uri_handler_init));
 
 #if ENABLE_SHM_BUFFER_SUPPORT
-#define WPE_RAW_CAPS "; video/x-raw, "          \
+#define WPE_RAW_CAPS "video/x-raw, "            \
   "format = (string) BGRA, "                    \
   "width = " GST_VIDEO_SIZE_RANGE ", "          \
   "height = " GST_VIDEO_SIZE_RANGE ", "         \
@@ -144,7 +144,7 @@ G_DEFINE_TYPE_WITH_CODE (GstWpeSrc, gst_wpe_src, GST_TYPE_GL_BASE_SRC,
   "framerate = " GST_VIDEO_FPS_RANGE ", "               \
   "pixel-aspect-ratio = (fraction)1/1, texture-target = (string)2D"
 
-#define WPE_SRC_CAPS WPE_BASIC_CAPS WPE_RAW_CAPS
+#define WPE_SRC_CAPS WPE_BASIC_CAPS ";" WPE_RAW_CAPS
 #define WPE_SRC_DOC_CAPS WPE_BASIC_CAPS "; video/x-raw, format = (string) BGRA"
 
 static GstStaticPadTemplate src_factory = GST_STATIC_PAD_TEMPLATE ("src",
@@ -364,13 +364,24 @@ gst_wpe_src_stop (GstBaseSrc * base_src)
 }
 
 static GstCaps *
-gst_wpe_src_fixate (GstBaseSrc * base_src, GstCaps * caps)
+gst_wpe_src_fixate (GstBaseSrc * base_src, GstCaps * combined_caps)
 {
   GstWpeSrc *src = GST_WPE_SRC (base_src);
   GstStructure *structure;
   gint width, height;
+  GstCaps *caps;
 
-  caps = gst_caps_make_writable (caps);
+  /* In situation where software GL support is explicitly requested, select raw
+   * caps, otherwise perform default caps negotiation. Unfortunately at this
+   * point we don't know yet if a GL context will be usable or not, so we can't
+   * check the element GstContext.
+   */
+  if (!g_strcmp0 (g_getenv ("LIBGL_ALWAYS_SOFTWARE"), "true")) {
+    caps = gst_caps_from_string (WPE_RAW_CAPS);
+  } else {
+    caps = gst_caps_make_writable (combined_caps);
+  }
+
   structure = gst_caps_get_structure (caps, 0);
 
   gst_structure_fixate_field_nearest_int (structure, "width", DEFAULT_WIDTH);
